@@ -1,0 +1,9 @@
+target/
+.dockerignore
+.git
+.gitignore
+*.md
+*.log
+.idea/
+.vscode/
+**/node_modules

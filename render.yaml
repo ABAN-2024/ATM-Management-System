@@ -1,0 +1,18 @@
+# Minimal Render service definition example. You can also configure these via the Render dashboard.
+# Adjust names, plan, and env vars as needed.
+services:
+  - type: web
+    name: atm-backend
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: Dockerfile
+    buildCommand: mvn -DskipTests package
+    startCommand: java -Dserver.port=$PORT -jar /app/app.jar
+    envVars:
+      - key: ATM_DATASOURCE_URL
+        value: ""
+      - key: ATM_DATASOURCE_USERNAME
+        value: ""
+      - key: ATM_DATASOURCE_PASSWORD
+        value: ""
