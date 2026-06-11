@@ -1,27 +1,109 @@
-const accounts = [
-    {
-        name: "Ahmed Mohamed",
-        cardNumber: "1234567890",
-        pin: "1234",
-        accountNumber: "ACC-001",
-        balance: 5000,
-        locked: false,
-        failedAttempts: 0,
-        history: [],
-        complaints: []
-    },
-    {
-        name: "Sara Ali",
-        cardNumber: "9876543210",
-        pin: "5678",
-        accountNumber: "ACC-002",
-        balance: 12000,
-        locked: false,
-        failedAttempts: 0,
-        history: [],
-        complaints: []
+let accounts = [];
+
+const apiBaseUrl = "http://localhost:8080/api";
+const customerApiUrl = `${apiBaseUrl}/customers`;
+let useBackend = true;
+
+function applyBackendCustomers(customers) {
+    if (!Array.isArray(customers) || customers.length === 0) {
+        return false;
     }
-];
+
+    const backendAccounts = customers
+        .filter((customer) => customer.accountNumber && customer.name && typeof customer.balance === "number")
+        .map((customer, index) => ({
+            id: customer.id,
+            name: customer.name,
+            cardNumber: customer.cardNumber || customer.accountNumber || `0000${String(index + 1).padStart(4, "0")}`,
+            pin: customer.pin || null,
+            accountNumber: customer.accountNumber,
+            balance: customer.balance,
+            locked: customer.locked || false,
+            failedAttempts: customer.failedAttempts || 0,
+            transactions: customer.transactions || [],
+            complaints: customer.complaints || [],
+            history: customer.history || []
+        }));
+
+    if (backendAccounts.length === 0) {
+        return false;
+    }
+
+    useBackend = true;
+    accounts = backendAccounts;
+    return true;
+}
+
+async function loadCustomers() {
+    try {
+        const response = await fetch(customerApiUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const customers = await response.json();
+        const backendUsed = applyBackendCustomers(customers);
+        console.log("Loaded customers from backend:", customers, backendUsed ? "Using backend customer data" : "Using sample accounts");
+        return customers;
+    } catch (error) {
+        console.error("Failed to load customers:", error);
+        setMessage("Backend unavailable. Please start the backend and refresh.", "error");
+        return [];
+    }
+}
+
+function mapBackendCustomer(customer) {
+    return {
+        id: customer.id,
+        name: customer.name,
+        cardNumber: customer.cardNumber,
+        pin: customer.pin || null,
+        accountNumber: customer.accountNumber,
+        balance: customer.balance,
+        locked: customer.locked || false,
+        failedAttempts: customer.failedAttempts || 0,
+        transactions: customer.transactions || [],
+        complaints: customer.complaints || [],
+        history: []
+    };
+}
+
+function updateLocalAccount(customer) {
+    if (!customer || !customer.id) {
+        return;
+    }
+
+    const index = accounts.findIndex((account) => account.id === customer.id);
+    if (index !== -1) {
+        accounts[index] = mapBackendCustomer(customer);
+    }
+}
+
+async function fetchJson(url, options = {}) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        const message = errorBody?.message || response.statusText || `HTTP ${response.status}`;
+        throw new Error(message);
+    }
+    return response.json();
+}
+
+async function backendLogin(cardNumber, pin) {
+    return fetchJson(`${apiBaseUrl}/auth/login`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({cardNumber, pin})
+    });
+}
+
+async function backendAction(path, body) {
+    return fetchJson(`${apiBaseUrl}${path}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
+    });
+}
 
 const maxAttempts = 3;
 let currentAccount = null;
@@ -32,7 +114,6 @@ const loginView = document.querySelector("#loginView");
 const dashboardView = document.querySelector("#dashboardView");
 const loginForm = document.querySelector("#loginForm");
 const transactionForm = document.querySelector("#transactionForm");
-const sessionStatus = document.querySelector("#sessionStatus");
 const messageBox = document.querySelector("#messageBox");
 const customerName = document.querySelector("#customerName");
 const accountNumber = document.querySelector("#accountNumber");
@@ -60,26 +141,35 @@ balanceToggle.addEventListener("click", toggleBalanceVisibility);
 document.querySelector("#signOutButton").addEventListener("click", signOut);
 document.querySelector("#clearHistoryButton").addEventListener("click", clearHistory);
 
-document.querySelectorAll(".sample-account").forEach((button) => {
-    button.addEventListener("click", () => {
-        document.querySelector("#cardNumber").value = button.dataset.card;
-        document.querySelector("#pin").value = button.dataset.pin;
-    });
-});
-
 document.querySelectorAll(".tab-button").forEach((button) => {
     button.addEventListener("click", () => setOperation(button.dataset.operation));
 });
 
-function handleLogin(event) {
+async function handleLogin(event) {
     event.preventDefault();
 
     const cardNumber = document.querySelector("#cardNumber").value.trim();
     const pin = document.querySelector("#pin").value.trim();
-    const account = accounts.find((item) => item.cardNumber === cardNumber);
+
+    if (useBackend) {
+        try {
+            const backendCustomer = await backendLogin(cardNumber, pin);
+            currentAccount = mapBackendCustomer(backendCustomer);
+            updateLocalAccount(backendCustomer);
+            showDashboard(currentAccount);
+            return;
+        } catch (error) {
+            setMessage(error.message, "error");
+            return;
+        }
+    }
+
+    const account = accounts.find(
+        (item) => item.cardNumber === cardNumber || item.accountNumber === cardNumber
+    );
 
     if (!account) {
-        setMessage("Card number not found.", "error");
+        setMessage("Account not found.", "error");
         return;
     }
 
@@ -103,18 +193,19 @@ function handleLogin(event) {
 
     account.failedAttempts = 0;
     currentAccount = account;
-    loginForm.reset();
-    loginView.classList.add("hidden");
-    dashboardView.classList.remove("hidden");
-    sessionStatus.textContent = "Signed in";
-    sessionStatus.classList.add("active");
-    balanceVisible = false;
-    setOperation("withdraw");
-    updateDashboard();
-    setMessage(`Welcome, ${account.name}.`, "success");
+    showDashboard(currentAccount);
 }
 
-function handleTransaction(event) {
+function showDashboard(account) {
+    if (loginForm) loginForm.classList.add("hidden");
+    if (dashboardView) dashboardView.classList.remove("hidden");
+    setOperation("deposit");
+    updateLocalAccount(account);
+    updateDashboard();
+    setMessage(`Welcome, ${account.name}!`, "success");
+}
+
+async function handleTransaction(event) {
     event.preventDefault();
 
     if (!currentAccount) {
@@ -123,12 +214,12 @@ function handleTransaction(event) {
     }
 
     if (currentOperation === "pin") {
-        changePin();
+        await changePin();
         return;
     }
 
     if (currentOperation === "complaint") {
-        raiseComplaint();
+        await raiseComplaint();
         return;
     }
 
@@ -139,18 +230,31 @@ function handleTransaction(event) {
     }
 
     if (currentOperation === "withdraw") {
-        withdraw(amount);
+        await withdraw(amount);
     } else if (currentOperation === "transfer") {
-        transfer(amount);
+        await transfer(amount);
     } else {
-        deposit(amount);
+        await deposit(amount);
     }
 
     amountInput.value = "";
     updateDashboard();
 }
 
-function withdraw(amount) {
+async function withdraw(amount) {
+    if (useBackend && currentAccount.id) {
+        try {
+            const updated = await backendAction(`/customers/${currentAccount.id}/withdraw`, {amount});
+            currentAccount = mapBackendCustomer(updated);
+            updateLocalAccount(updated);
+            setMessage(`Withdrawn ${formatMoney(amount)}.`, "success");
+            return;
+        } catch (error) {
+            setMessage(error.message, "error");
+            return;
+        }
+    }
+
     if (amount > currentAccount.balance) {
         setMessage("Insufficient balance.", "error");
         return;
@@ -161,14 +265,50 @@ function withdraw(amount) {
     setMessage(`Withdrawn ${formatMoney(amount)}.`, "success");
 }
 
-function deposit(amount) {
+async function deposit(amount) {
+    if (useBackend && currentAccount.id) {
+        try {
+            const updated = await backendAction(`/customers/${currentAccount.id}/deposit`, {amount});
+            currentAccount = mapBackendCustomer(updated);
+            updateLocalAccount(updated);
+            setMessage(`Deposited ${formatMoney(amount)}.`, "success");
+            return;
+        } catch (error) {
+            setMessage(error.message, "error");
+            return;
+        }
+    }
+
     currentAccount.balance += amount;
     addHistory("Deposit", amount, "financial");
     setMessage(`Deposited ${formatMoney(amount)}.`, "success");
 }
 
-function transfer(amount) {
+async function transfer(amount) {
     const recipientAccountNumber = recipientAccountInput.value.trim().toUpperCase();
+
+    if (useBackend && currentAccount.id) {
+        try {
+            const updated = await backendAction(`/customers/${currentAccount.id}/transfer`, {
+                recipientAccountNumber,
+                amount
+            });
+            currentAccount = mapBackendCustomer(updated);
+            updateLocalAccount(updated);
+
+            const recipient = accounts.find((account) => account.accountNumber.toUpperCase() === recipientAccountNumber);
+            if (recipient && recipient.id && recipient.id !== currentAccount.id) {
+                recipient.balance += amount;
+            }
+
+            setMessage(`Transferred ${formatMoney(amount)} to ${recipientAccountNumber}.`, "success");
+            return;
+        } catch (error) {
+            setMessage(error.message, "error");
+            return;
+        }
+    }
+
     const recipient = accounts.find((account) => account.accountNumber.toUpperCase() === recipientAccountNumber);
 
     if (!recipient) {
@@ -193,7 +333,28 @@ function transfer(amount) {
     setMessage(`Transferred ${formatMoney(amount)} to ${recipient.name}.`, "success");
 }
 
-function changePin() {
+async function changePin() {
+    if (useBackend && currentAccount.id) {
+        const currentPin = oldPinInput.value.trim();
+        const newPin = newPinInput.value.trim();
+
+        try {
+            const updated = await backendAction(`/customers/${currentAccount.id}/change-pin`, {
+                currentPin,
+                newPin
+            });
+            currentAccount = mapBackendCustomer(updated);
+            updateLocalAccount(updated);
+            oldPinInput.value = "";
+            newPinInput.value = "";
+            setMessage("PIN changed successfully.", "success");
+            return;
+        } catch (error) {
+            setMessage(error.message, "error");
+            return;
+        }
+    }
+
     const oldPin = oldPinInput.value.trim();
     const newPin = newPinInput.value.trim();
 
@@ -215,12 +376,30 @@ function changePin() {
     setMessage("PIN changed successfully.", "success");
 }
 
-function raiseComplaint() {
+async function raiseComplaint() {
     const details = complaintDetails.value.trim();
 
     if (details.length < 10) {
         setMessage("Please enter at least 10 characters for the complaint details.", "error");
         return;
+    }
+
+    if (useBackend && currentAccount.id) {
+        try {
+            const complaint = await backendAction(`/customers/${currentAccount.id}/complaints`, {
+                category: complaintCategory.value,
+                priority: complaintPriority.value,
+                details
+            });
+            currentAccount = mapBackendCustomer(await fetchJson(`${apiBaseUrl}/customers/${currentAccount.id}`));
+            updateLocalAccount(currentAccount);
+            transactionForm.reset();
+            setMessage(`Complaint submitted. Ticket ${complaint.ticketId}.`, "success");
+            return;
+        } catch (error) {
+            setMessage(error.message, "error");
+            return;
+        }
     }
 
     const complaint = {
@@ -262,6 +441,14 @@ function setOperation(operation) {
 }
 
 function addHistory(label, amount, type) {
+    if (useBackend && Array.isArray(currentAccount.transactions)) {
+        return;
+    }
+
+    if (!currentAccount.history) {
+        currentAccount.history = [];
+    }
+
     currentAccount.history.unshift(createHistoryEntry(label, amount, type));
 }
 
@@ -281,6 +468,11 @@ function createHistoryEntry(label, amount, type) {
 
 function clearHistory() {
     if (!currentAccount) {
+        return;
+    }
+
+    if (useBackend) {
+        setMessage("Cannot clear backend transaction history.", "error");
         return;
     }
 
@@ -316,9 +508,7 @@ function toggleBalanceVisibility() {
 function updateHistory() {
     historyList.innerHTML = "";
 
-    const statementEntries = currentAccount.history
-        .filter((entry) => entry.type === "financial")
-        .slice(0, 5);
+    const statementEntries = getStatementEntries();
 
     if (statementEntries.length === 0) {
         const emptyItem = document.createElement("li");
@@ -333,6 +523,21 @@ function updateHistory() {
         item.innerHTML = `<strong>${entry.label}<span>${entry.time}</span></strong><span>${amount}</span>`;
         historyList.appendChild(item);
     });
+}
+
+function getStatementEntries() {
+    if (Array.isArray(currentAccount.transactions) && currentAccount.transactions.length > 0) {
+        return currentAccount.transactions.slice(0, 5).map((transaction) => ({
+            label: transaction.type,
+            amount: transaction.amount,
+            type: "financial",
+            time: transaction.createdAt
+        }));
+    }
+
+    return (currentAccount.history || [])
+        .filter((entry) => entry.type === "financial")
+        .slice(0, 5);
 }
 
 function updateComplaints() {
@@ -374,8 +579,6 @@ function signOut() {
     balanceVisible = false;
     dashboardView.classList.add("hidden");
     loginView.classList.remove("hidden");
-    sessionStatus.textContent = "Signed out";
-    sessionStatus.classList.remove("active");
     setMessage("Signed out.", "success");
 }
 
@@ -421,3 +624,5 @@ function createTicketId() {
     const sequence = String(currentAccount.complaints.length + 1).padStart(3, "0");
     return `CMP-${accountSuffix}-${sequence}`;
 }
+
+loadCustomers();

@@ -1,10 +1,26 @@
+package backend.atm.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+@Embeddable
 public class Card {
     private static final int MAX_ATTEMPTS = 3;
 
-    private final String cardNumber;
+    @Column(name = "card_number")
+    private String cardNumber;
+
+    @Column(name = "card_pin")
     private String pin;
+
+    @Column(name = "card_locked")
     private boolean locked;
+
+    @Column(name = "card_failed_attempts")
     private int failedAttempts;
+
+    public Card() {
+    }
 
     public Card(String cardNumber, String pin) {
         this.cardNumber = cardNumber;
@@ -17,16 +33,32 @@ public class Card {
         return cardNumber;
     }
 
+    public void setCardNumber(String cardNumber) {
+        this.cardNumber = cardNumber;
+    }
+
     public String getPin() {
         return pin;
+    }
+
+    public void setPin(String pin) {
+        this.pin = pin;
     }
 
     public boolean isLocked() {
         return locked;
     }
 
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+    }
+
     public int getFailedAttempts() {
         return failedAttempts;
+    }
+
+    public void setFailedAttempts(int failedAttempts) {
+        this.failedAttempts = failedAttempts;
     }
 
     public void restoreState(boolean locked, int failedAttempts) {
@@ -36,7 +68,6 @@ public class Card {
 
     public boolean validatePin(String inputPin) {
         if (locked) {
-            System.out.println("This card is locked. Please contact the bank.");
             return false;
         }
 
@@ -46,7 +77,6 @@ public class Card {
         }
 
         failedAttempts++;
-        System.out.printf("Incorrect PIN. Attempt %d/%d.%n", failedAttempts, MAX_ATTEMPTS);
 
         if (failedAttempts >= MAX_ATTEMPTS) {
             lockCard();
@@ -57,23 +87,19 @@ public class Card {
 
     public boolean changePin(String oldPin, String newPin) {
         if (locked) {
-            System.out.println("Cannot change PIN because this card is locked.");
             return false;
         }
 
         if (!pin.equals(oldPin)) {
-            System.out.println("Old PIN is incorrect.");
             return false;
         }
 
         if (!isValidPin(newPin)) {
-            System.out.println("New PIN must be exactly 4 digits.");
             return false;
         }
 
         pin = newPin;
         failedAttempts = 0;
-        System.out.println("PIN changed successfully.");
         return true;
     }
 

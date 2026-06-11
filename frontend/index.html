@@ -1,160 +1,246 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ATM Management System</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <main class="atm-shell">
-        <section class="screen-panel">
-            <header class="topbar">
-                <div>
-                    <p class="eyebrow">ATM Desk</p>
-                    <h1>ATM Management System</h1>
-                </div>
-                <div class="status-pill" id="sessionStatus">Signed out</div>
-            </header>
+      <section class="screen-panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">ATM Desk</p>
+            <h1>ATM Management System</h1>
+          </div>
+        </header>
 
-            <section class="login-view" id="loginView">
-                <form class="login-form" id="loginForm">
-                    <div class="field">
-                        <label for="cardNumber">Card number</label>
-                        <input id="cardNumber" name="cardNumber" inputmode="numeric" autocomplete="off" placeholder="1234567890">
-                    </div>
-                    <div class="field">
-                        <label for="pin">PIN</label>
-                        <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1234">
-                    </div>
-                    <button class="primary-action" type="submit">Sign in</button>
-                </form>
-
-                <aside class="sample-panel">
-                    <p class="panel-label">Sample Accounts</p>
-                    <div class="sample-grid">
-                        <button class="sample-account" type="button" data-card="1234567890" data-pin="1234">
-                            <span>Ahmed Mohamed</span>
-                            <strong>1234567890</strong>
-                        </button>
-                        <button class="sample-account" type="button" data-card="9876543210" data-pin="5678">
-                            <span>Sara Ali</span>
-                            <strong>9876543210</strong>
-                        </button>
-                    </div>
-                </aside>
-            </section>
-
-            <section class="dashboard-view hidden" id="dashboardView">
-                <div class="account-strip">
-                    <div>
-                        <p class="panel-label">Customer</p>
-                        <h2 id="customerName">-</h2>
-                    </div>
-                    <div>
-                        <p class="panel-label">Account</p>
-                        <h2 id="accountNumber">-</h2>
-                    </div>
-                    <button class="ghost-action" id="signOutButton" type="button">Sign out</button>
-                </div>
-
-                <div class="money-band">
-                    <div class="balance-header">
-                        <p class="panel-label">Available Balance</p>
-                        <button class="balance-toggle" id="balanceToggle" type="button" aria-label="Show balance" aria-pressed="false">👁️</button>
-                    </div>
-                    <strong id="balanceDisplay">••••••</strong>
-                </div>
-
-                <div class="workspace">
-                    <section class="operation-panel">
-                        <div class="operation-tabs" role="tablist" aria-label="Transaction type">
-                            <button class="tab-button active" type="button" data-operation="withdraw">Withdraw</button>
-                            <button class="tab-button" type="button" data-operation="deposit">Deposit</button>
-                            <button class="tab-button" type="button" data-operation="transfer">Transfer</button>
-                            <button class="tab-button" type="button" data-operation="pin">PIN</button>
-                            <button class="tab-button" type="button" data-operation="complaint">Complaint</button>
-                        </div>
-
-                        <form id="transactionForm" class="transaction-form">
-                            <div class="field amount-field" id="amountField">
-                                <label for="amountInput">Amount</label>
-                                <input id="amountInput" name="amount" inputmode="decimal" autocomplete="off" placeholder="500">
-                            </div>
-
-                            <div class="transfer-fields hidden" id="transferFields">
-                                <div class="field">
-                                    <label for="recipientAccountInput">Recipient account number</label>
-                                    <input id="recipientAccountInput" inputmode="text" autocomplete="off" placeholder="ACC-002">
-                                </div>
-                            </div>
-
-                            <div class="pin-fields hidden" id="pinFields">
-                                <div class="field">
-                                    <label for="oldPinInput">Old PIN</label>
-                                    <input id="oldPinInput" type="password" maxlength="4" inputmode="numeric" autocomplete="off">
-                                </div>
-                                <div class="field">
-                                    <label for="newPinInput">New PIN</label>
-                                    <input id="newPinInput" type="password" maxlength="4" inputmode="numeric" autocomplete="off">
-                                </div>
-                            </div>
-
-                            <div class="complaint-fields hidden" id="complaintFields">
-                                <div class="field">
-                                    <label for="complaintCategory">Category</label>
-                                    <select id="complaintCategory">
-                                        <option value="Cash withdrawal issue">Cash withdrawal issue</option>
-                                        <option value="Deposit issue">Deposit issue</option>
-                                        <option value="Card issue">Card issue</option>
-                                        <option value="PIN or login issue">PIN or login issue</option>
-                                        <option value="Machine condition">Machine condition</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label for="complaintPriority">Priority</label>
-                                    <select id="complaintPriority">
-                                        <option value="Normal">Normal</option>
-                                        <option value="High">High</option>
-                                        <option value="Urgent">Urgent</option>
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label for="complaintDetails">Details</label>
-                                    <textarea id="complaintDetails" rows="5" placeholder="Describe what happened"></textarea>
-                                </div>
-                            </div>
-
-                            <button class="primary-action" id="submitOperation" type="submit">Withdraw</button>
-                        </form>
-                    </section>
-
-                    <section class="history-panel">
-                        <div class="history-header">
-                            <div>
-                                <p class="panel-label">Mini Statement</p>
-                                <span class="sub-label">Last 5 transactions</span>
-                            </div>
-                            <button class="text-action" id="clearHistoryButton" type="button">Clear</button>
-                        </div>
-                        <ol class="history-list" id="historyList"></ol>
-                    </section>
-
-                    <section class="complaints-panel">
-                        <div class="history-header">
-                            <p class="panel-label">Complaints</p>
-                            <span class="ticket-count" id="complaintCount">0 open</span>
-                        </div>
-                        <ol class="complaint-list" id="complaintList"></ol>
-                    </section>
-                </div>
-            </section>
-
-            <p class="message" id="messageBox" role="status" aria-live="polite"></p>
+        <section class="login-view" id="loginView">
+          <form class="login-form" id="loginForm">
+            <div class="field">
+              <label for="cardNumber">Card number</label>
+              <input
+                id="cardNumber"
+                name="cardNumber"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="1234567890"
+              />
+            </div>
+            <div class="field">
+              <label for="pin">PIN</label>
+              <input
+                id="pin"
+                name="pin"
+                type="password"
+                inputmode="numeric"
+                autocomplete="off"
+                maxlength="4"
+                placeholder="1234"
+              />
+            </div>
+            <button class="primary-action" type="submit">Sign in</button>
+          </form>
         </section>
+
+        <section class="dashboard-view hidden" id="dashboardView">
+          <div class="account-strip">
+            <div>
+              <p class="panel-label">Customer</p>
+              <h2 id="customerName">-</h2>
+            </div>
+            <div>
+              <p class="panel-label">Account</p>
+              <h2 id="accountNumber">-</h2>
+            </div>
+            <button class="ghost-action" id="signOutButton" type="button">
+              Sign out
+            </button>
+          </div>
+
+          <div class="money-band">
+            <div class="balance-header">
+              <p class="panel-label">Available Balance</p>
+              <button
+                class="balance-toggle"
+                id="balanceToggle"
+                type="button"
+                aria-label="Show balance"
+                aria-pressed="false"
+              >
+                👁️
+              </button>
+            </div>
+            <strong id="balanceDisplay">••••••</strong>
+          </div>
+
+          <div class="workspace">
+            <section class="operation-panel">
+              <div
+                class="operation-tabs"
+                role="tablist"
+                aria-label="Transaction type"
+              >
+                <button
+                  class="tab-button active"
+                  type="button"
+                  data-operation="withdraw"
+                >
+                  Withdraw
+                </button>
+                <button
+                  class="tab-button"
+                  type="button"
+                  data-operation="deposit"
+                >
+                  Deposit
+                </button>
+                <button
+                  class="tab-button"
+                  type="button"
+                  data-operation="transfer"
+                >
+                  Transfer
+                </button>
+                <button class="tab-button" type="button" data-operation="pin">
+                  PIN
+                </button>
+                <button
+                  class="tab-button"
+                  type="button"
+                  data-operation="complaint"
+                >
+                  Complaint
+                </button>
+              </div>
+
+              <form id="transactionForm" class="transaction-form">
+                <div class="field amount-field" id="amountField">
+                  <label for="amountInput">Amount</label>
+                  <input
+                    id="amountInput"
+                    name="amount"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="500"
+                  />
+                </div>
+
+                <div class="transfer-fields hidden" id="transferFields">
+                  <div class="field">
+                    <label for="recipientAccountInput"
+                      >Recipient account number</label
+                    >
+                    <input
+                      id="recipientAccountInput"
+                      inputmode="text"
+                      autocomplete="off"
+                      placeholder="ACC-002"
+                    />
+                  </div>
+                </div>
+
+                <div class="pin-fields hidden" id="pinFields">
+                  <div class="field">
+                    <label for="oldPinInput">Old PIN</label>
+                    <input
+                      id="oldPinInput"
+                      type="password"
+                      maxlength="4"
+                      inputmode="numeric"
+                      autocomplete="off"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="newPinInput">New PIN</label>
+                    <input
+                      id="newPinInput"
+                      type="password"
+                      maxlength="4"
+                      inputmode="numeric"
+                      autocomplete="off"
+                    />
+                  </div>
+                </div>
+
+                <div class="complaint-fields hidden" id="complaintFields">
+                  <div class="field">
+                    <label for="complaintCategory">Category</label>
+                    <select id="complaintCategory">
+                      <option value="Cash withdrawal issue">
+                        Cash withdrawal issue
+                      </option>
+                      <option value="Deposit issue">Deposit issue</option>
+                      <option value="Card issue">Card issue</option>
+                      <option value="PIN or login issue">
+                        PIN or login issue
+                      </option>
+                      <option value="Machine condition">
+                        Machine condition
+                      </option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="complaintPriority">Priority</label>
+                    <select id="complaintPriority">
+                      <option value="Normal">Normal</option>
+                      <option value="High">High</option>
+                      <option value="Urgent">Urgent</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="complaintDetails">Details</label>
+                    <textarea
+                      id="complaintDetails"
+                      rows="5"
+                      placeholder="Describe what happened"
+                    ></textarea>
+                  </div>
+                </div>
+
+                <button
+                  class="primary-action"
+                  id="submitOperation"
+                  type="submit"
+                >
+                  Withdraw
+                </button>
+              </form>
+            </section>
+
+            <section class="history-panel">
+              <div class="history-header">
+                <div>
+                  <p class="panel-label">Mini Statement</p>
+                  <span class="sub-label">Last 5 transactions</span>
+                </div>
+                <button
+                  class="text-action"
+                  id="clearHistoryButton"
+                  type="button"
+                >
+                  Clear
+                </button>
+              </div>
+              <ol class="history-list" id="historyList"></ol>
+            </section>
+
+            <section class="complaints-panel">
+              <div class="history-header">
+                <p class="panel-label">Complaints</p>
+                <span class="ticket-count" id="complaintCount">0 open</span>
+              </div>
+              <ol class="complaint-list" id="complaintList"></ol>
+            </section>
+          </div>
+        </section>
+
+        <p class="message" id="messageBox" role="status" aria-live="polite"></p>
+      </section>
     </main>
 
     <script src="script.js"></script>
-</body>
+  </body>
 </html>
